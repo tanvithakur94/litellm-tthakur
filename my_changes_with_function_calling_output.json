@@ -1,0 +1,43 @@
+{
+  "id": "chatcmpl-7569e2bb-6a65-4acb-a0d6-e946a02c390c",
+  "created": 1753775738,
+  "model": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "message": {
+        "content": "I can see we're in the Amazon Bedrock console showing the Claude 3.5 Sonnet v2 model page. Let me help you navigate to the provisioned throughput purchase option.\n\nLooking at the left navigation menu, I can see \"Provisioned Throughput\" under the \"Infer\" section. Let me click that first.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 1,
+            "function": {
+              "arguments": "{\"action\": \"mouse_move\", \"coordinate\": [74, 348]}",
+              "name": "computer"
+            },
+            "id": "tooluse_qhwjAQ_qSx6xmIWQtsZY8A",
+            "type": "function"
+          }
+        ],
+        "function_call": null
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 153,
+    "prompt_tokens": 3661,
+    "total_tokens": 3814,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 0,
+      "text_tokens": null,
+      "image_tokens": null
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
