@@ -1,0 +1,44 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "Go to the bedrock console and click purchase provisioned throughput"
+        },
+        {
+          "image": {
+            "source": {
+              "bytes": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+            },
+            "format": "png"
+          }
+        }
+      ]
+    }
+  ],
+  "additionalModelRequestFields": {
+    "anthropic_beta": [
+      "computer-use-2024-10-22"
+    ],
+    "tools": [
+      {
+        "type": "computer_20241022",
+        "name": "computer",
+        "display_width_px": 1024,
+        "display_height_px": 768,
+        "display_number": 0
+      },
+      {
+        "type": "bash_20241022",
+        "name": "bash"
+      },
+      {
+        "type": "text_editor_20241022",
+        "name": "str_replace_editor"
+      }
+    ]
+  },
+  "system": [],
+  "inferenceConfig": {}
+}

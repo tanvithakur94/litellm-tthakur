@@ -1,0 +1,43 @@
+{
+  "id": "chatcmpl-fa3c9288-16e7-43dd-ad17-0ca3451ac903",
+  "created": 1753774557,
+  "model": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+  "object": "chat.completion",
+  "system_fingerprint": null,
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "message": {
+        "content": "I'll help you interact with the AWS Bedrock console. Let me take a screenshot first to see the current state of the screen.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 1,
+            "function": {
+              "arguments": "{\"action\": \"screenshot\"}",
+              "name": "computer"
+            },
+            "id": "tooluse_JgIZD0DHQPeEHbI1hoH64Q",
+            "type": "function"
+          }
+        ],
+        "function_call": null
+      }
+    }
+  ],
+  "usage": {
+    "completion_tokens": 80,
+    "prompt_tokens": 1166,
+    "total_tokens": 1246,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 0,
+      "text_tokens": null,
+      "image_tokens": null
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  }
+}
