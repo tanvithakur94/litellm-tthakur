@@ -1,13 +1,53 @@
 import asyncio
 import json
 import base64
+import logging
+import time
 import litellm
 from litellm import acompletion
 from litellm.llms.bedrock.chat.converse_transformation import AmazonConverseConfig
 from litellm.llms.bedrock.common_utils import BedrockModelInfo
+from litellm.integrations.custom_logger import CustomLogger
 
 # Enable debug logging
 litellm._turn_on_debug()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+logger.setLevel(logging.DEBUG)
+
+
+class LiteLLMLXSCustomHandler(CustomLogger):
+    def __init__(self):
+        self.output_file = f"bedrock_input_payload_{int(time.time())}.json"
+
+    def log_pre_api_call(self, model, messages, kwargs):
+        # Get the input payload
+        input_payload = kwargs["additional_args"]["complete_input_dict"]
+
+        # If it's a JSON string, parse it to an object
+        if isinstance(input_payload, str):
+            try:
+                input_payload = json.loads(input_payload)
+            except json.JSONDecodeError:
+                print("Warning: Could not parse input_payload as JSON")
+
+        # Write to file
+        try:
+            with open(self.output_file, 'w') as f:
+                json.dump(input_payload, f, indent=2, default=str)
+            print(f"Input payload written to {self.output_file}")
+        except Exception as e:
+            print(f"Error writing to file: {e}")
+
+    def log_post_api_call(self, kwargs, response_obj, start_time, end_time):
+        pass
+
+
+# Registering custom callback handlers
+custom_handler = LiteLLMLXSCustomHandler()
+litellm.callbacks = [custom_handler]
+print(f"Input payload will be saved to: {custom_handler.output_file}")
 
 
 async def test_bedrock_computer_use():
@@ -48,13 +88,9 @@ async def test_bedrock_computer_use():
 
     # Read the image file
     with open('console2.png', 'rb') as f:
-            png_bytes = f.read()
-            # Convert to base64 for LiteLLM
-            png_base64 = base64.b64encode(png_bytes).decode('utf-8')
-    # except FileNotFoundError:
-    #     print("console2.png not found, creating a placeholder...")
-    #     # Create a minimal 1x1 PNG as placeholder
-    #     png_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        png_bytes = f.read()
+        # Convert to base64 for LiteLLM
+        png_base64 = base64.b64encode(png_bytes).decode('utf-8')
 
     messages = [
         {
@@ -79,7 +115,7 @@ async def test_bedrock_computer_use():
             model=model,
             messages=messages,
             tools=tools,
-            # Note: anthropic_beta should be automatically added
+            anthropic_beta=["computer-use-2024-10-22"],
         )
 
         print("Success! Response:")
@@ -92,3 +128,4 @@ async def test_bedrock_computer_use():
 
 if __name__ == "__main__":
     asyncio.run(test_bedrock_computer_use())
+    print(f"\nInput payload has been saved to: {custom_handler.output_file}")
