@@ -52,13 +52,7 @@ from ..common_utils import BedrockError, BedrockModelInfo, get_bedrock_tool_name
 BEDROCK_HOSTED_TOOLS = [
     "web_search",
     "bash",
-    "bash_20241022",
-    "bash_20250124",
     "text_editor",
-    "text_editor_20241022",
-    "text_editor_20250124",
-    "computer_20241022",
-    "computer_20250124",
     "code_execution",
     # Add more as Bedrock supports them
 ]
@@ -66,14 +60,8 @@ BEDROCK_HOSTED_TOOLS = [
 
 class AmazonConverseConfig(BaseConfig):
     """
-    Reference: https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#API_runtime_Converse_RequestSyntax
-
-    - `max_tokens` -> `maxTokens`
-    - `stream` -> `stream`
-    - `stop` -> `stopSequences`
-    - `temperature` -> `temperature`
-    - `top_p` -> `topP`
-    - `response_format` -> `additionalModelRequestFields`
+    Reference - https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html
+    #2 - https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html#conversation-inference-supported-models-features
     """
 
     maxTokens: Optional[int]
@@ -146,7 +134,6 @@ class AmazonConverseConfig(BaseConfig):
             supported_params.append("tool_choice")
             supported_params.append("thinking")
             supported_params.append("reasoning_effort")
-            supported_params.append("anthropic_beta")  # Add anthropic_beta support for ARN models
             return supported_params
 
         ## Filter out 'cross-region' from model name
@@ -154,7 +141,6 @@ class AmazonConverseConfig(BaseConfig):
 
         if (
             base_model.startswith("anthropic")
-            or base_model.startswith("claude")  # Claude models are Anthropic models
             or base_model.startswith("mistral")
             or base_model.startswith("cohere")
             or base_model.startswith("meta.llama3-1")
@@ -167,10 +153,6 @@ class AmazonConverseConfig(BaseConfig):
             )
         ):
             supported_params.append("tools")
-
-        # Add anthropic_beta support for Anthropic models (needed for computer-use)
-        if base_model.startswith("anthropic") or base_model.startswith("claude"):
-            supported_params.append("anthropic_beta")
 
         if litellm.utils.supports_tool_choice(
             model=model, custom_llm_provider=self.custom_llm_provider
@@ -243,20 +225,6 @@ class AmazonConverseConfig(BaseConfig):
             + self.get_supported_document_types()
             + self.get_supported_video_types()
         )
-
-    def is_computer_tool_used(
-        self, tools: Optional[List[ChatCompletionToolParam]]
-    ) -> bool:
-        """
-        Check if computer tools are being used in the request.
-        Similar to Anthropic's implementation.
-        """
-        if tools is None:
-            return False
-        for tool in tools:
-            if "type" in tool and tool["type"].startswith("computer_"):
-                return True
-        return False
 
     def _create_json_tool_call_for_response_format(
         self,
@@ -586,13 +554,6 @@ class AmazonConverseConfig(BaseConfig):
         if "anthropic_beta" in optional_params:
             additional_request_params["anthropic_beta"] = optional_params["anthropic_beta"]
 
-        # Auto-detect computer tool usage and add anthropic_beta if needed
-        tools = optional_params.get("tools")
-        computer_tool_used = self.is_computer_tool_used(tools=tools)
-        if computer_tool_used and "anthropic_beta" not in additional_request_params:
-            # Automatically add the anthropic_beta header for computer use
-            additional_request_params["anthropic_beta"] = ["computer-use-2024-10-22"]
-
         def split_bedrock_tools(tools):
             builtin_tools = []
             function_tools = []
@@ -608,54 +569,9 @@ class AmazonConverseConfig(BaseConfig):
                     function_tools.append(tool)
             return builtin_tools, function_tools
 
-        def transform_builtin_tools(tools):
-            """Transform builtin tools from OpenAI format to Bedrock format"""
-            transformed_tools = []
-            for tool in tools:
-                tool_type = tool.get("type", "")
-                if tool_type.startswith("computer_"):
-                    # Transform computer tool from OpenAI format to Bedrock format
-                    if "function" in tool:
-                        # OpenAI function structure - extract parameters
-                        function_params = tool["function"].get("parameters", {})
-                        transformed_tool = {
-                            "type": tool_type,
-                            "name": tool["function"].get("name", "computer"),
-                            "display_width_px": function_params.get("display_width_px"),
-                            "display_height_px": function_params.get("display_height_px"),
-                        }
-                        if "display_number" in function_params:
-                            transformed_tool["display_number"] = function_params["display_number"]
-                        transformed_tools.append(transformed_tool)
-                    else:
-                        # Already in flat structure
-                        transformed_tools.append(tool)
-                elif tool_type.startswith("bash_") or tool_type.startswith("text_editor_"):
-                    # Transform bash and text_editor tools from OpenAI format to Bedrock format
-                    if "function" in tool:
-                        # OpenAI function structure - extract name and type
-                        transformed_tool = {
-                            "type": tool_type,
-                            "name": tool["function"].get("name", tool_type.split("_")[0]),
-                        }
-                        transformed_tools.append(transformed_tool)
-                    else:
-                        # Already in flat structure - ensure name is present
-                        transformed_tool = tool.copy()
-                        if "name" not in transformed_tool:
-                            transformed_tool["name"] = tool_type.split("_")[0]
-                        transformed_tools.append(transformed_tool)
-                else:
-                    # Other builtin tools - pass through as-is
-                    transformed_tools.append(tool)
-            return transformed_tools
-
         builtin_tools, function_tools = split_bedrock_tools(optional_params.get("tools", []))
         if builtin_tools:
-            additional_request_params["tools"] = transform_builtin_tools(builtin_tools)
-
-        # Remove tools from inference_params since we've processed them
-        inference_params.pop("tools", None)
+            additional_request_params["tools"] = builtin_tools
 
         # Only set the topK value in for models that support it
         additional_request_params.update(
@@ -663,7 +579,9 @@ class AmazonConverseConfig(BaseConfig):
         )
 
         # Use only function tools for toolConfig
-        bedrock_tools: List[ToolBlock] = _bedrock_tools_pt(function_tools)
+        bedrock_tools: List[ToolBlock] = _bedrock_tools_pt(
+            inference_params.pop("tools", []) if not function_tools else function_tools
+        )
         bedrock_tool_config: Optional[ToolConfigBlock] = None
         if len(bedrock_tools) > 0:
             tool_choice_values: ToolChoiceValuesBlock = inference_params.pop(
